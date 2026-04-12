@@ -12,6 +12,8 @@ const PatientSignup = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [village, setVillage] = useState('');
+  const [district, setDistrict] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -20,43 +22,54 @@ const PatientSignup = () => {
     e.preventDefault();
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { role: 'patient', full_name: fullName, phone },
-        emailRedirectTo: window.location.origin,
-      },
-    });
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { role: 'patient', full_name: fullName, phone },
+          emailRedirectTo: window.location.origin,
+        },
+      });
 
-    if (error) {
-      toast({ title: 'Signup failed', description: error.message, variant: 'destructive' });
-      setLoading(false);
-      return;
-    }
+      if (error) throw error;
 
-    // Create patient profile after signup
-    if (data.user) {
-      // Wait for profile trigger to complete
-      await new Promise((r) => setTimeout(r, 1000));
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', data.user.id)
-        .single();
+      if (data.user) {
+        // Wait for handle_new_user trigger to create profile
+        await new Promise((r) => setTimeout(r, 1500));
 
-      if (profile) {
-        await supabase.from('patient_profiles').insert({ profile_id: profile.id });
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+
+        if (profile) {
+          const { error: patientError } = await supabase
+            .from('patient_profiles')
+            .insert({
+              profile_id: profile.id,
+              village,
+              district,
+            });
+
+          if (patientError) {
+            console.error('Patient insert error:', patientError);
+          }
+        }
       }
-    }
 
-    setLoading(false);
-    toast({ title: 'Account created!', description: 'Welcome to Hifazat.' });
-    navigate('/');
+      toast({ title: 'Account created!', description: 'Welcome to Hifazat.' });
+      navigate('/patient/dashboard');
+    } catch (err: any) {
+      toast({ title: 'Signup failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm space-y-6">
         <Link to="/signup" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back
@@ -77,6 +90,14 @@ const PatientSignup = () => {
           <div className="space-y-2">
             <Label htmlFor="phone">Phone Number</Label>
             <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required placeholder="+93 ..." />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="village">Village</Label>
+            <Input id="village" value={village} onChange={(e) => setVillage(e.target.value)} required placeholder="Your village" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="district">District</Label>
+            <Input id="district" value={district} onChange={(e) => setDistrict(e.target.value)} required placeholder="Your district" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>

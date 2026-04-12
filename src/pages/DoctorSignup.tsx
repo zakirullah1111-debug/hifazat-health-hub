@@ -5,8 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft } from 'lucide-react';
+
+const specializations = [
+  'General Physician', 'Cardiologist', 'Dermatologist', 'Pediatrician',
+  'Gynecologist', 'Orthopedic', 'ENT', 'Neurologist', 'Psychiatrist', 'Dentist', 'Other',
+];
 
 const DoctorSignup = () => {
   const [fullName, setFullName] = useState('');
@@ -14,9 +20,11 @@ const DoctorSignup = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [specialization, setSpecialization] = useState('');
-  const [qualification, setQualification] = useState('');
-  const [licenseNumber, setLicenseNumber] = useState('');
   const [city, setCity] = useState('');
+  const [district, setDistrict] = useState('');
+  const [experienceYears, setExperienceYears] = useState('');
+  const [consultationFee, setConsultationFee] = useState('');
+  const [bio, setBio] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -25,43 +33,53 @@ const DoctorSignup = () => {
     e.preventDefault();
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { role: 'doctor', full_name: fullName, phone },
-        emailRedirectTo: window.location.origin,
-      },
-    });
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { role: 'doctor', full_name: fullName, phone },
+          emailRedirectTo: window.location.origin,
+        },
+      });
 
-    if (error) {
-      toast({ title: 'Signup failed', description: error.message, variant: 'destructive' });
-      setLoading(false);
-      return;
-    }
+      if (error) throw error;
 
-    if (data.user) {
-      await new Promise((r) => setTimeout(r, 1000));
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', data.user.id)
-        .single();
+      if (data.user) {
+        await new Promise((r) => setTimeout(r, 1500));
 
-      if (profile) {
-        await supabase.from('doctor_profiles').insert({
-          profile_id: profile.id,
-          specialization,
-          qualification,
-          license_number: licenseNumber,
-          city,
-        });
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+
+        if (profile) {
+          const { error: doctorError } = await supabase
+            .from('doctor_profiles')
+            .insert({
+              profile_id: profile.id,
+              specialization,
+              city,
+              district,
+              years_of_experience: parseInt(experienceYears) || 0,
+              consultation_fee: parseFloat(consultationFee) || 0,
+              bio: bio || null,
+            });
+
+          if (doctorError) {
+            console.error('Doctor insert error:', doctorError);
+          }
+        }
       }
-    }
 
-    setLoading(false);
-    toast({ title: 'Application submitted!', description: 'Your profile is pending approval.' });
-    navigate('/');
+      toast({ title: 'Application submitted!', description: 'Your profile is pending approval.' });
+      navigate('/login');
+    } catch (err: any) {
+      toast({ title: 'Signup failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -89,19 +107,36 @@ const DoctorSignup = () => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="specialization">Specialization</Label>
-            <Input id="specialization" value={specialization} onChange={(e) => setSpecialization(e.target.value)} required placeholder="e.g. Cardiology" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="qualification">Qualification</Label>
-            <Input id="qualification" value={qualification} onChange={(e) => setQualification(e.target.value)} required placeholder="e.g. MBBS, MD" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="license">License Number</Label>
-            <Input id="license" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} required placeholder="Medical license number" />
+            <Select value={specialization} onValueChange={setSpecialization} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Select specialization" />
+              </SelectTrigger>
+              <SelectContent>
+                {specializations.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="city">City</Label>
             <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} required placeholder="Your city" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="district">District</Label>
+            <Input id="district" value={district} onChange={(e) => setDistrict(e.target.value)} required placeholder="Your district" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="experience">Experience (Years)</Label>
+            <Input id="experience" type="number" min="0" value={experienceYears} onChange={(e) => setExperienceYears(e.target.value)} required placeholder="e.g. 5" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="fee">Consultation Fee (AFN)</Label>
+            <Input id="fee" type="number" min="0" value={consultationFee} onChange={(e) => setConsultationFee(e.target.value)} required placeholder="e.g. 500" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bio">Bio (optional)</Label>
+            <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell patients about yourself..." rows={3} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
