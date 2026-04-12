@@ -27,7 +27,6 @@ const Login = () => {
     }
 
     if (data.user) {
-      // Fetch profile to get role for redirect
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
@@ -37,17 +36,20 @@ const Login = () => {
       console.log('Logged in profile:', profile);
       console.log('Role detected:', profile?.role);
 
-      const routes: Record<string, string> = {
-        patient: '/patient/dashboard',
-        doctor: '/doctor/dashboard',
-        admin: '/admin/dashboard',
-      };
-
       setLoading(false);
-      navigate(routes[profile?.role ?? ''] ?? '/');
+
+      if (profile?.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else if (profile?.role === 'doctor') {
+        navigate('/doctor/dashboard');
+      } else if (profile?.role === 'patient') {
+        navigate('/patient/dashboard');
+      } else {
+        navigate('/login');
+      }
     } else {
       setLoading(false);
-      navigate('/');
+      navigate('/login');
     }
   };
 
