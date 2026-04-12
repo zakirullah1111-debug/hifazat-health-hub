@@ -17,16 +17,38 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
+      setLoading(false);
       toast({ title: 'Login failed', description: error.message, variant: 'destructive' });
       return;
     }
 
-    // Auth context will handle redirect via landing page
-    navigate('/');
+    if (data.user) {
+      // Fetch profile to get role for redirect
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', data.user.id)
+        .maybeSingle();
+
+      console.log('Logged in profile:', profile);
+      console.log('Role detected:', profile?.role);
+
+      const routes: Record<string, string> = {
+        patient: '/patient/dashboard',
+        doctor: '/doctor/dashboard',
+        admin: '/admin/dashboard',
+      };
+
+      setLoading(false);
+      navigate(routes[profile?.role ?? ''] ?? '/');
+    } else {
+      setLoading(false);
+      navigate('/');
+    }
   };
 
   return (
