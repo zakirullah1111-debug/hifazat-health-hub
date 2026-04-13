@@ -1,10 +1,8 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Calendar, Users, Clock, CheckCircle } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const statusOptions = ['available', 'busy', 'away', 'offline'] as const;
 const statusColors: Record<string, string> = {
@@ -16,7 +14,64 @@ const statusColors: Record<string, string> = {
 
 const DoctorDashboard = () => {
   const { profile } = useAuth();
-  const [availability, setAvailability] = useState<string>('available');
+  const [availability, setAvailability] = useState<string>('offline');
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [doctorProfileId, setDoctorProfileId] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    todayTotal: 0,
+    todayConfirmed: 0,
+    inQueue: 0,
+    allTime: 0,
+  });
+
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    const init = async () => {
+      // Get doctor_profile record
+      const { data: dp } = await supabase
+        .from('doctor_profiles')
+        .select('id, availability_status')
+        .eq('profile_id', profile.id)
+        .maybeSingle();
+
+      if (dp) {
+        setDoctorProfileId(dp.id);
+        setAvailability(dp.availability_status);
+        await fetchStats(dp.id);
+      }
+    };
+    init();
+  }, [profile?.id]);
+
+  const fetchStats = async (dpId: string) => {
+    const today = new Date().toISOString().split('T')[0];
+
+    const [todayAll, confirmed, queue, allTime] = await Promise.all([
+      supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('doctor_profile_id', dpId).eq('appointment_date', today).neq('status', 'cancelled'),
+      supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('doctor_profile_id', dpId).eq('appointment_date', today).eq('status', 'confirmed'),
+      supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('doctor_profile_id', dpId).eq('status', 'in_queue'),
+      supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('doctor_profile_id', dpId).neq('status', 'cancelled'),
+    ]);
+
+    setStats({
+      todayTotal: todayAll.count || 0,
+      todayConfirmed: confirmed.count || 0,
+      inQueue: queue.count || 0,
+      allTime: allTime.count || 0,
+    });
+  };
+
+  const updateStatus = async (newStatus: string) => {
+    if (!doctorProfileId) return;
+    setStatusLoading(true);
+    await supabase
+      .from('doctor_profiles')
+      .update({ availability_status: newStatus as any })
+      .eq('id', doctorProfileId);
+    setAvailability(newStatus);
+    setStatusLoading(false);
+  };
 
   return (
     <div className="p-4 space-y-5">
@@ -27,19 +82,20 @@ const DoctorDashboard = () => {
         <p className="text-sm text-muted-foreground">Manage your appointments and patients</p>
       </div>
 
-      {/* Availability Toggle */}
+      {/* Status Toggle */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
-              <Label className="text-sm font-medium">Availability Status</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">Current: {availability}</p>
+              <p className="text-sm font-medium">Your Status</p>
+              <p className="text-xs text-muted-foreground">Patients see this in real-time</p>
             </div>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 flex-wrap">
               {statusOptions.map((s) => (
                 <button
                   key={s}
-                  onClick={() => setAvailability(s)}
+                  disabled={statusLoading}
+                  onClick={() => updateStatus(s)}
                   className={`px-2.5 py-1 rounded-full text-[10px] font-medium capitalize transition-all ${
                     availability === s ? statusColors[s] : 'bg-muted text-muted-foreground'
                   }`}
@@ -54,10 +110,10 @@ const DoctorDashboard = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard icon={Calendar} label="Today's Appointments" value="5" color="text-primary" />
-        <StatCard icon={CheckCircle} label="Confirmed Today" value="3" color="text-success" />
-        <StatCard icon={Users} label="In Queue" value="2" color="text-warning" />
-        <StatCard icon={Clock} label="All Appointments" value="128" color="text-info" />
+        <StatCard icon={Calendar} label="Today's Appointments" value={stats.todayTotal.toString()} color="text-primary" />
+        <StatCard icon={CheckCircle} label="Confirmed Today" value={stats.todayConfirmed.toString()} color="text-success" />
+        <StatCard icon={Users} label="In Queue" value={stats.inQueue.toString()} color="text-warning" />
+        <StatCard icon={Clock} label="All Appointments" value={stats.allTime.toString()} color="text-info" />
       </div>
     </div>
   );
