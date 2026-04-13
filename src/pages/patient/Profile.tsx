@@ -20,33 +20,45 @@ const PatientProfile = () => {
 
   const handleComplaintSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!profile?.id) return;
     setSubmitting(true);
 
-    // Get patient profile id
-    const { data: patientProfile } = await supabase
-      .from('patient_profiles')
-      .select('id')
-      .eq('profile_id', profile?.id ?? '')
-      .single();
+    try {
+      // Get patient_profile id
+      const { data: pp } = await supabase
+        .from('patient_profiles')
+        .select('id')
+        .eq('profile_id', profile.id)
+        .maybeSingle();
 
-    if (patientProfile) {
-      await supabase.from('complaints').insert({
-        patient_profile_id: patientProfile.id,
+      if (!pp) {
+        toast({ title: 'Error', description: 'Patient profile not found.', variant: 'destructive' });
+        setSubmitting(false);
+        return;
+      }
+
+      const { error } = await supabase.from('complaints').insert({
+        patient_profile_id: pp.id,
         subject: complaintSubject,
         message: complaintMessage,
       });
+
+      if (error) throw error;
+
       toast({ title: 'Complaint submitted', description: 'We will get back to you soon.' });
       setComplaintSubject('');
       setComplaintMessage('');
+    } catch (err: any) {
+      toast({ title: 'Failed to submit', description: err.message, variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   return (
     <div className="p-4 space-y-4">
       <h1 className="text-xl font-bold text-foreground">Profile</h1>
 
-      {/* Basic info */}
       <Card>
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-3">
@@ -62,7 +74,6 @@ const PatientProfile = () => {
         </CardContent>
       </Card>
 
-      {/* Settings */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm">Settings</CardTitle>
@@ -79,7 +90,6 @@ const PatientProfile = () => {
         </CardContent>
       </Card>
 
-      {/* Customer Support */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm">Customer Support</CardTitle>
@@ -94,7 +104,6 @@ const PatientProfile = () => {
         </CardContent>
       </Card>
 
-      {/* Complaint Form */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm">Submit a Complaint</CardTitle>
