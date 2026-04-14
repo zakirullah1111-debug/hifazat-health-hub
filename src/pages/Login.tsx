@@ -30,11 +30,8 @@ const Login = () => {
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
-        .eq('user_id', data.user.id)
+        .eq('id', data.user.id)
         .maybeSingle();
-
-      console.log('Logged in profile:', profile);
-      console.log('Role detected:', profile?.role);
 
       setLoading(false);
 

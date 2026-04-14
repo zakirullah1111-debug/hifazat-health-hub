@@ -21,11 +21,11 @@ const AdminDashboard = () => {
         const today = new Date().toISOString().split('T')[0];
 
         const [patients, doctors, todayAppts, allAppts, pending] = await Promise.all([
-          supabase.from('patient_profiles').select('id', { count: 'exact', head: true }),
-          supabase.from('doctor_profiles').select('id', { count: 'exact', head: true }).eq('verification_status', 'approved'),
+          supabase.from('patients').select('id', { count: 'exact', head: true }),
+          supabase.from('doctors').select('id', { count: 'exact', head: true }).eq('is_approved', true),
           supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('appointment_date', today),
           supabase.from('appointments').select('id', { count: 'exact', head: true }),
-          supabase.from('doctor_profiles').select('id', { count: 'exact', head: true }).eq('verification_status', 'pending'),
+          supabase.from('doctors').select('id', { count: 'exact', head: true }).eq('is_approved', false).eq('is_frozen', false),
         ]);
 
         setKpiData({

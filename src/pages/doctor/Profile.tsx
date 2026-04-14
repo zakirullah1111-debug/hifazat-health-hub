@@ -14,72 +14,61 @@ import { useToast } from '@/hooks/use-toast';
 const DoctorProfile = () => {
   const { profile, signOut } = useAuth();
   const { toast } = useToast();
-  const [doctorProfileId, setDoctorProfileId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const [specialization, setSpecialization] = useState('');
-  const [qualification, setQualification] = useState('');
   const [fee, setFee] = useState('');
   const [experience, setExperience] = useState('');
   const [bio, setBio] = useState('');
-  const [clinicName, setClinicName] = useState('');
+  const [city, setCity] = useState('');
+  const [district, setDistrict] = useState('');
   const [availableEmergency, setAvailableEmergency] = useState(false);
-
-  const [showPhone, setShowPhone] = useState(true);
-  const [showEmail, setShowEmail] = useState(true);
-  const [showFee, setShowFee] = useState(true);
-  const [showExp, setShowExp] = useState(true);
-  const [showQual, setShowQual] = useState(true);
+  const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>({
+    phone: true, email: true, fee: true, experience: true, qualification: true,
+  });
 
   useEffect(() => {
     if (!profile?.id) return;
-    const fetch = async () => {
+    const fetchData = async () => {
       const { data } = await supabase
-        .from('doctor_profiles')
+        .from('doctors')
         .select('*')
-        .eq('profile_id', profile.id)
+        .eq('id', profile.id)
         .maybeSingle();
       if (data) {
-        setDoctorProfileId(data.id);
         setSpecialization(data.specialization || '');
-        setQualification(data.qualification || '');
-        setFee(data.consultation_fee?.toString() || '');
-        setExperience(data.years_of_experience?.toString() || '');
+        setFee(data.fee?.toString() || '');
+        setExperience(data.experience_years?.toString() || '');
         setBio(data.bio || '');
-        setClinicName(data.clinic_name || '');
-        setAvailableEmergency(data.available_in_emergency || false);
-        setShowPhone(data.show_phone_to_patients ?? true);
-        setShowEmail(data.show_email_to_patients ?? true);
-        setShowFee(data.show_fee_to_patients ?? true);
-        setShowExp(data.show_experience_to_patients ?? true);
-        setShowQual(data.show_qualification_to_patients ?? true);
+        setCity(data.city || '');
+        setDistrict(data.district || '');
+        setAvailableEmergency(data.available_emergency || false);
+        if (data.visible_fields && typeof data.visible_fields === 'object') {
+          setVisibleFields({ ...visibleFields, ...(data.visible_fields as Record<string, boolean>) });
+        }
       }
       setLoading(false);
     };
-    fetch();
+    fetchData();
   }, [profile?.id]);
 
   const handleSave = async () => {
-    if (!doctorProfileId) return;
+    if (!profile?.id) return;
     setSaving(true);
     const { error } = await supabase
-      .from('doctor_profiles')
+      .from('doctors')
       .update({
         specialization,
-        qualification,
-        consultation_fee: fee ? parseFloat(fee) : null,
-        years_of_experience: experience ? parseInt(experience) : null,
+        fee: fee ? parseFloat(fee) : null,
+        experience_years: experience ? parseInt(experience) : null,
         bio: bio || null,
-        clinic_name: clinicName || null,
-        available_in_emergency: availableEmergency,
-        show_phone_to_patients: showPhone,
-        show_email_to_patients: showEmail,
-        show_fee_to_patients: showFee,
-        show_experience_to_patients: showExp,
-        show_qualification_to_patients: showQual,
+        city,
+        district,
+        available_emergency: availableEmergency,
+        visible_fields: visibleFields,
       })
-      .eq('id', doctorProfileId);
+      .eq('id', profile.id);
 
     if (error) {
       toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
@@ -87,6 +76,10 @@ const DoctorProfile = () => {
       toast({ title: 'Profile updated successfully' });
     }
     setSaving(false);
+  };
+
+  const toggleVisibility = (field: string) => {
+    setVisibleFields(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
   if (loading) {
@@ -126,10 +119,6 @@ const DoctorProfile = () => {
               <Input value={specialization} onChange={e => setSpecialization(e.target.value)} placeholder="Cardiology" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Qualification</Label>
-              <Input value={qualification} onChange={e => setQualification(e.target.value)} placeholder="MBBS, MD" />
-            </div>
-            <div className="space-y-1">
               <Label className="text-xs">Consultation Fee (AFN)</Label>
               <Input type="number" value={fee} onChange={e => setFee(e.target.value)} placeholder="500" />
             </div>
@@ -137,14 +126,18 @@ const DoctorProfile = () => {
               <Label className="text-xs">Experience (years)</Label>
               <Input type="number" value={experience} onChange={e => setExperience(e.target.value)} placeholder="5" />
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs">City</Label>
+              <Input value={city} onChange={e => setCity(e.target.value)} placeholder="Kabul" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">District</Label>
+              <Input value={district} onChange={e => setDistrict(e.target.value)} placeholder="District" />
+            </div>
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Bio</Label>
             <Textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell patients about yourself..." rows={3} />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Clinic Name</Label>
-            <Input value={clinicName} onChange={e => setClinicName(e.target.value)} placeholder="Your clinic name" />
           </div>
           <div className="flex items-center justify-between">
             <Label className="text-sm">Available for Emergency</Label>
@@ -163,15 +156,15 @@ const DoctorProfile = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           {[
-            { label: 'Show phone to patients', value: showPhone, set: setShowPhone },
-            { label: 'Show email to patients', value: showEmail, set: setShowEmail },
-            { label: 'Show fee to patients', value: showFee, set: setShowFee },
-            { label: 'Show experience to patients', value: showExp, set: setShowExp },
-            { label: 'Show qualification to patients', value: showQual, set: setShowQual },
-          ].map(({ label, value, set }) => (
-            <div key={label} className="flex items-center justify-between">
+            { label: 'Show phone to patients', key: 'phone' },
+            { label: 'Show email to patients', key: 'email' },
+            { label: 'Show fee to patients', key: 'fee' },
+            { label: 'Show experience to patients', key: 'experience' },
+            { label: 'Show qualification to patients', key: 'qualification' },
+          ].map(({ label, key }) => (
+            <div key={key} className="flex items-center justify-between">
               <Label className="text-sm">{label}</Label>
-              <Switch checked={value} onCheckedChange={set} />
+              <Switch checked={visibleFields[key] ?? true} onCheckedChange={() => toggleVisibility(key)} />
             </div>
           ))}
         </CardContent>

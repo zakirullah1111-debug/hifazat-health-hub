@@ -17,308 +17,263 @@ export type Database = {
       appointments: {
         Row: {
           appointment_date: string
-          appointment_time: string
           created_at: string
-          doctor_profile_id: string
-          fee_snapshot: number | null
+          doctor_id: string
+          fee_paid: number | null
           id: string
           notes: string | null
-          patient_profile_id: string
-          status: Database["public"]["Enums"]["appointment_status"]
+          patient_id: string
+          queue_position: number | null
+          status: string
         }
         Insert: {
           appointment_date: string
-          appointment_time: string
           created_at?: string
-          doctor_profile_id: string
-          fee_snapshot?: number | null
+          doctor_id: string
+          fee_paid?: number | null
           id?: string
           notes?: string | null
-          patient_profile_id: string
-          status?: Database["public"]["Enums"]["appointment_status"]
+          patient_id: string
+          queue_position?: number | null
+          status?: string
         }
         Update: {
           appointment_date?: string
-          appointment_time?: string
           created_at?: string
-          doctor_profile_id?: string
-          fee_snapshot?: number | null
+          doctor_id?: string
+          fee_paid?: number | null
           id?: string
           notes?: string | null
-          patient_profile_id?: string
-          status?: Database["public"]["Enums"]["appointment_status"]
+          patient_id?: string
+          queue_position?: number | null
+          status?: string
         }
         Relationships: [
           {
-            foreignKeyName: "appointments_doctor_profile_id_fkey"
-            columns: ["doctor_profile_id"]
+            foreignKeyName: "appointments_doctor_id_fkey"
+            columns: ["doctor_id"]
             isOneToOne: false
-            referencedRelation: "doctor_profiles"
+            referencedRelation: "doctors"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "appointments_patient_profile_id_fkey"
-            columns: ["patient_profile_id"]
+            foreignKeyName: "appointments_patient_id_fkey"
+            columns: ["patient_id"]
             isOneToOne: false
-            referencedRelation: "patient_profiles"
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
       }
       complaints: {
         Row: {
-          admin_notes: string | null
+          admin_reply: string | null
           created_at: string
           id: string
           message: string
-          patient_profile_id: string
-          status: Database["public"]["Enums"]["complaint_status"]
+          patient_id: string
+          status: string
           subject: string
         }
         Insert: {
-          admin_notes?: string | null
+          admin_reply?: string | null
           created_at?: string
           id?: string
           message: string
-          patient_profile_id: string
-          status?: Database["public"]["Enums"]["complaint_status"]
+          patient_id: string
+          status?: string
           subject: string
         }
         Update: {
-          admin_notes?: string | null
+          admin_reply?: string | null
           created_at?: string
           id?: string
           message?: string
-          patient_profile_id?: string
-          status?: Database["public"]["Enums"]["complaint_status"]
+          patient_id?: string
+          status?: string
           subject?: string
         }
         Relationships: [
           {
-            foreignKeyName: "complaints_patient_profile_id_fkey"
-            columns: ["patient_profile_id"]
+            foreignKeyName: "complaints_patient_id_fkey"
+            columns: ["patient_id"]
             isOneToOne: false
-            referencedRelation: "patient_profiles"
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
       }
-      doctor_profiles: {
+      doctors: {
         Row: {
-          availability_status: Database["public"]["Enums"]["availability_status"]
-          available_in_emergency: boolean | null
+          available_emergency: boolean | null
           bio: string | null
           city: string | null
-          clinic_name: string | null
-          consultation_fee: number | null
-          created_at: string
+          created_at: string | null
           district: string | null
+          experience_years: number | null
+          fee: number | null
           id: string
-          license_number: string | null
-          patients_checked_count: number | null
-          profile_id: string
-          profile_photo_url: string | null
-          qualification: string | null
-          show_email_to_patients: boolean | null
-          show_experience_to_patients: boolean | null
-          show_fee_to_patients: boolean | null
-          show_phone_to_patients: boolean | null
-          show_qualification_to_patients: boolean | null
+          is_approved: boolean | null
+          is_frozen: boolean | null
+          rating: number | null
+          rating_count: number | null
           specialization: string | null
-          verification_status: Database["public"]["Enums"]["verification_status"]
-          years_of_experience: number | null
+          status: string | null
+          total_patients: number | null
+          village: string | null
+          visible_fields: Json | null
         }
         Insert: {
-          availability_status?: Database["public"]["Enums"]["availability_status"]
-          available_in_emergency?: boolean | null
+          available_emergency?: boolean | null
           bio?: string | null
           city?: string | null
-          clinic_name?: string | null
-          consultation_fee?: number | null
-          created_at?: string
+          created_at?: string | null
           district?: string | null
-          id?: string
-          license_number?: string | null
-          patients_checked_count?: number | null
-          profile_id: string
-          profile_photo_url?: string | null
-          qualification?: string | null
-          show_email_to_patients?: boolean | null
-          show_experience_to_patients?: boolean | null
-          show_fee_to_patients?: boolean | null
-          show_phone_to_patients?: boolean | null
-          show_qualification_to_patients?: boolean | null
+          experience_years?: number | null
+          fee?: number | null
+          id: string
+          is_approved?: boolean | null
+          is_frozen?: boolean | null
+          rating?: number | null
+          rating_count?: number | null
           specialization?: string | null
-          verification_status?: Database["public"]["Enums"]["verification_status"]
-          years_of_experience?: number | null
+          status?: string | null
+          total_patients?: number | null
+          village?: string | null
+          visible_fields?: Json | null
         }
         Update: {
-          availability_status?: Database["public"]["Enums"]["availability_status"]
-          available_in_emergency?: boolean | null
+          available_emergency?: boolean | null
           bio?: string | null
           city?: string | null
-          clinic_name?: string | null
-          consultation_fee?: number | null
-          created_at?: string
+          created_at?: string | null
           district?: string | null
+          experience_years?: number | null
+          fee?: number | null
           id?: string
-          license_number?: string | null
-          patients_checked_count?: number | null
-          profile_id?: string
-          profile_photo_url?: string | null
-          qualification?: string | null
-          show_email_to_patients?: boolean | null
-          show_experience_to_patients?: boolean | null
-          show_fee_to_patients?: boolean | null
-          show_phone_to_patients?: boolean | null
-          show_qualification_to_patients?: boolean | null
+          is_approved?: boolean | null
+          is_frozen?: boolean | null
+          rating?: number | null
+          rating_count?: number | null
           specialization?: string | null
-          verification_status?: Database["public"]["Enums"]["verification_status"]
-          years_of_experience?: number | null
+          status?: string | null
+          total_patients?: number | null
+          village?: string | null
+          visible_fields?: Json | null
         }
         Relationships: [
           {
-            foreignKeyName: "doctor_profiles_profile_id_fkey"
-            columns: ["profile_id"]
+            foreignKeyName: "doctors_id_fkey"
+            columns: ["id"]
             isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
       }
-      emergency_contacts: {
+      favourites: {
         Row: {
           created_at: string
+          doctor_id: string
           id: string
-          name: string
-          phone: string
-          type: string
+          patient_id: string
         }
         Insert: {
           created_at?: string
+          doctor_id: string
           id?: string
-          name: string
-          phone: string
-          type: string
+          patient_id: string
         }
         Update: {
           created_at?: string
+          doctor_id?: string
           id?: string
-          name?: string
-          phone?: string
-          type?: string
-        }
-        Relationships: []
-      }
-      favorites: {
-        Row: {
-          created_at: string
-          doctor_profile_id: string
-          id: string
-          patient_profile_id: string
-        }
-        Insert: {
-          created_at?: string
-          doctor_profile_id: string
-          id?: string
-          patient_profile_id: string
-        }
-        Update: {
-          created_at?: string
-          doctor_profile_id?: string
-          id?: string
-          patient_profile_id?: string
+          patient_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "favorites_doctor_profile_id_fkey"
-            columns: ["doctor_profile_id"]
+            foreignKeyName: "favourites_doctor_id_fkey"
+            columns: ["doctor_id"]
             isOneToOne: false
-            referencedRelation: "doctor_profiles"
+            referencedRelation: "doctors"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "favorites_patient_profile_id_fkey"
-            columns: ["patient_profile_id"]
+            foreignKeyName: "favourites_patient_id_fkey"
+            columns: ["patient_id"]
             isOneToOne: false
-            referencedRelation: "patient_profiles"
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
       }
       notifications: {
         Row: {
+          body: string
           created_at: string
           id: string
           is_read: boolean | null
-          message: string
-          target_profile_id: string | null
-          target_role: Database["public"]["Enums"]["notification_target"]
+          recipient_id: string | null
+          sender_id: string | null
           title: string
           type: string | null
         }
         Insert: {
+          body: string
           created_at?: string
           id?: string
           is_read?: boolean | null
-          message: string
-          target_profile_id?: string | null
-          target_role?: Database["public"]["Enums"]["notification_target"]
+          recipient_id?: string | null
+          sender_id?: string | null
           title: string
           type?: string | null
         }
         Update: {
+          body?: string
           created_at?: string
           id?: string
           is_read?: boolean | null
-          message?: string
-          target_profile_id?: string | null
-          target_role?: Database["public"]["Enums"]["notification_target"]
+          recipient_id?: string | null
+          sender_id?: string | null
           title?: string
           type?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "notifications_target_profile_id_fkey"
-            columns: ["target_profile_id"]
+            foreignKeyName: "notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
       }
-      patient_profiles: {
+      patients: {
         Row: {
-          created_at: string
+          city: string | null
+          created_at: string | null
           district: string | null
           id: string
-          notifications_enabled: boolean | null
-          profile_id: string
-          theme_preference: string | null
           village: string | null
         }
         Insert: {
-          created_at?: string
+          city?: string | null
+          created_at?: string | null
           district?: string | null
-          id?: string
-          notifications_enabled?: boolean | null
-          profile_id: string
-          theme_preference?: string | null
+          id: string
           village?: string | null
         }
         Update: {
-          created_at?: string
+          city?: string | null
+          created_at?: string | null
           district?: string | null
           id?: string
-          notifications_enabled?: boolean | null
-          profile_id?: string
-          theme_preference?: string | null
           village?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "patient_profiles_profile_id_fkey"
-            columns: ["profile_id"]
+            foreignKeyName: "patients_id_fkey"
+            columns: ["id"]
             isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -333,7 +288,6 @@ export type Database = {
           id: string
           phone: string
           role: Database["public"]["Enums"]["app_role"]
-          user_id: string
         }
         Insert: {
           created_at?: string
@@ -342,7 +296,6 @@ export type Database = {
           id?: string
           phone: string
           role?: Database["public"]["Enums"]["app_role"]
-          user_id: string
         }
         Update: {
           created_at?: string
@@ -351,7 +304,6 @@ export type Database = {
           id?: string
           phone?: string
           role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
         }
         Relationships: []
       }
@@ -367,17 +319,6 @@ export type Database = {
     }
     Enums: {
       app_role: "patient" | "doctor" | "admin"
-      appointment_status:
-        | "pending_confirmation"
-        | "confirmed"
-        | "in_queue"
-        | "called"
-        | "completed"
-        | "cancelled"
-      availability_status: "available" | "busy" | "away" | "offline"
-      complaint_status: "open" | "in_progress" | "resolved"
-      notification_target: "patient" | "doctor" | "both"
-      verification_status: "pending" | "approved" | "rejected" | "frozen"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -506,18 +447,6 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["patient", "doctor", "admin"],
-      appointment_status: [
-        "pending_confirmation",
-        "confirmed",
-        "in_queue",
-        "called",
-        "completed",
-        "cancelled",
-      ],
-      availability_status: ["available", "busy", "away", "offline"],
-      complaint_status: ["open", "in_progress", "resolved"],
-      notification_target: ["patient", "doctor", "both"],
-      verification_status: ["pending", "approved", "rejected", "frozen"],
     },
   },
 } as const

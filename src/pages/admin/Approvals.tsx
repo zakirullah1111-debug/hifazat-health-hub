@@ -11,13 +11,11 @@ interface PendingDoctor {
   specialization: string | null;
   city: string | null;
   district: string | null;
-  years_of_experience: number | null;
-  consultation_fee: number | null;
-  profiles: {
-    full_name: string;
-    email: string;
-    phone: string;
-  } | null;
+  experience_years: number | null;
+  fee: number | null;
+  full_name: string;
+  email: string;
+  phone: string;
 }
 
 const AdminApprovals = () => {
@@ -29,15 +27,37 @@ const AdminApprovals = () => {
   const fetchPending = async () => {
     try {
       const { data } = await supabase
-        .from('doctor_profiles')
-        .select(`
-          id, specialization, city, district,
-          years_of_experience, consultation_fee,
-          profiles!doctor_profiles_profile_id_fkey (full_name, email, phone)
-        `)
-        .eq('verification_status', 'pending');
+        .from('doctors')
+        .select('id, specialization, city, district, experience_years, fee')
+        .eq('is_approved', false)
+        .eq('is_frozen', false);
 
-      setPendingDoctors((data as unknown as PendingDoctor[]) || []);
+      if (!data || data.length === 0) {
+        setPendingDoctors([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get profile info for each doctor
+      const ids = data.map(d => d.id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, phone')
+        .in('id', ids);
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      const mapped: PendingDoctor[] = data.map(d => {
+        const prof = profileMap.get(d.id);
+        return {
+          ...d,
+          full_name: prof?.full_name ?? 'Unknown',
+          email: prof?.email ?? '',
+          phone: prof?.phone ?? '',
+        };
+      });
+
+      setPendingDoctors(mapped);
     } catch (err) {
       console.error('Fetch pending error:', err);
     } finally {
@@ -52,9 +72,16 @@ const AdminApprovals = () => {
   const approveDoctor = async (doctorId: string) => {
     setActionLoading(doctorId);
     await supabase
-      .from('doctor_profiles')
-      .update({ verification_status: 'approved' as const })
+      .from('doctors')
+      .update({ is_approved: true })
       .eq('id', doctorId);
+
+    await supabase.from('notifications').insert({
+      recipient_id: doctorId,
+      type: 'approval_update',
+      title: 'Profile Approved!',
+      body: 'Your profile has been approved. You can now access your dashboard.',
+    });
 
     setPendingDoctors((prev) => prev.filter((d) => d.id !== doctorId));
     setActionLoading(null);
@@ -64,9 +91,16 @@ const AdminApprovals = () => {
   const rejectDoctor = async (doctorId: string) => {
     setActionLoading(doctorId);
     await supabase
-      .from('doctor_profiles')
-      .update({ verification_status: 'rejected' as const })
+      .from('doctors')
+      .update({ is_frozen: true })
       .eq('id', doctorId);
+
+    await supabase.from('notifications').insert({
+      recipient_id: doctorId,
+      type: 'approval_update',
+      title: 'Profile Not Approved',
+      body: 'Your profile was not approved. Please contact support for more information.',
+    });
 
     setPendingDoctors((prev) => prev.filter((d) => d.id !== doctorId));
     setActionLoading(null);
@@ -94,12 +128,12 @@ const AdminApprovals = () => {
               <CardContent className="p-4 space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-semibold text-foreground">{d.profiles?.full_name ?? 'Unknown'}</h3>
+                    <h3 className="font-semibold text-foreground">{d.full_name}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {d.specialization ?? 'N/A'} • {d.years_of_experience ?? 0} yrs experience
+                      {d.specialization ?? 'N/A'} • {d.experience_years ?? 0} yrs experience
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {d.city ?? ''}{d.district ? `, ${d.district}` : ''} • Fee: {d.consultation_fee ?? 0} AFN
+                      {d.city ?? ''}{d.district ? `, ${d.district}` : ''} • Fee: {d.fee ?? 0} AFN
                     </p>
                   </div>
                   <Badge variant="secondary" className="text-[10px]">Pending</Badge>

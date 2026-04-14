@@ -12,10 +12,9 @@ interface Appointment {
   id: string;
   status: string;
   appointment_date: string;
-  appointment_time: string;
-  fee_snapshot: number | null;
+  fee_paid: number | null;
   notes: string | null;
-  patient_profile_id: string;
+  patient_id: string;
   patient_name: string;
   patient_phone: string;
 }
@@ -26,61 +25,41 @@ const DoctorAppointments = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [doctorProfileId, setDoctorProfileId] = useState<string | null>(null);
   const [calledIds, setCalledIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!profile?.id) return;
-    const init = async () => {
-      const { data: dp } = await supabase
-        .from('doctor_profiles')
-        .select('id')
-        .eq('profile_id', profile.id)
-        .maybeSingle();
-      if (dp) {
-        setDoctorProfileId(dp.id);
-        await fetchAppointments(dp.id);
-      }
-      setLoading(false);
-    };
-    init();
+    fetchAppointments();
   }, [profile?.id]);
 
-  const fetchAppointments = async (dpId: string) => {
+  const fetchAppointments = async () => {
+    if (!profile?.id) return;
     const today = new Date().toISOString().split('T')[0];
+
     const { data } = await supabase
       .from('appointments')
-      .select(`
-        id, status, appointment_date, appointment_time, fee_snapshot, notes, patient_profile_id
-      `)
-      .eq('doctor_profile_id', dpId)
+      .select('id, status, appointment_date, fee_paid, notes, patient_id')
+      .eq('doctor_id', profile.id)
       .eq('appointment_date', today)
       .order('created_at', { ascending: true });
 
     if (!data || data.length === 0) {
       setAppointments([]);
+      setLoading(false);
       return;
     }
 
-    // Get patient profile ids -> profile_ids -> names
-    const patientProfileIds = [...new Set(data.map(a => a.patient_profile_id))];
-    const { data: patientProfiles } = await supabase
-      .from('patient_profiles')
-      .select('id, profile_id')
-      .in('id', patientProfileIds);
-
-    const profileIds = patientProfiles?.map(pp => pp.profile_id) || [];
+    // Get patient names from profiles
+    const patientIds = [...new Set(data.map(a => a.patient_id))];
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, full_name, phone')
-      .in('id', profileIds);
+      .in('id', patientIds);
 
     const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
-    const ppMap = new Map(patientProfiles?.map(pp => [pp.id, pp.profile_id]) || []);
 
     const mapped: Appointment[] = data.map(a => {
-      const profId = ppMap.get(a.patient_profile_id);
-      const prof = profId ? profileMap.get(profId) : null;
+      const prof = profileMap.get(a.patient_id);
       return {
         ...a,
         patient_name: prof?.full_name || 'Unknown',
@@ -89,28 +68,24 @@ const DoctorAppointments = () => {
     });
 
     setAppointments(mapped);
+    setLoading(false);
   };
 
   const updateAppointment = async (id: string, status: string, extra?: Record<string, any>) => {
     setActionLoading(id);
-    await supabase.from('appointments').update({ status: status as any, ...extra }).eq('id', id);
+    await supabase.from('appointments').update({ status, ...extra }).eq('id', id);
     setAppointments(prev => prev.map(a => a.id === id ? { ...a, status, ...extra } : a));
     setActionLoading(null);
   };
 
   const confirmAppointment = async (apt: Appointment) => {
     await updateAppointment(apt.id, 'confirmed');
-    // Get target_profile_id for notification
-    const ppProfileId = await getProfileIdFromPatientProfile(apt.patient_profile_id);
-    if (ppProfileId) {
-      await supabase.from('notifications').insert({
-        target_profile_id: ppProfileId,
-        target_role: 'patient' as const,
-        type: 'appointment_confirmed',
-        title: 'Appointment Confirmed',
-        message: `Dr. ${profile?.full_name} has confirmed your appointment.`,
-      });
-    }
+    await supabase.from('notifications').insert({
+      recipient_id: apt.patient_id,
+      type: 'appointment_confirmed',
+      title: 'Appointment Confirmed',
+      body: `Dr. ${profile?.full_name} has confirmed your appointment.`,
+    });
     toast({ title: 'Appointment confirmed' });
   };
 
@@ -125,17 +100,12 @@ const DoctorAppointments = () => {
   };
 
   const callPatient = async (apt: Appointment) => {
-    const ppProfileId = await getProfileIdFromPatientProfile(apt.patient_profile_id);
-    if (ppProfileId) {
-      await supabase.from('notifications').insert({
-        target_profile_id: ppProfileId,
-        target_role: 'patient' as const,
-        type: 'queue_call',
-        title: 'Your Turn!',
-        message: `Dr. ${profile?.full_name} is ready to see you. Please proceed to the consultation.`,
-      });
-    }
-    await updateAppointment(apt.id, 'called');
+    await supabase.from('notifications').insert({
+      recipient_id: apt.patient_id,
+      type: 'queue_call',
+      title: 'Your Turn!',
+      body: `Dr. ${profile?.full_name} is ready to see you. Please proceed to the consultation.`,
+    });
     setCalledIds(prev => new Set(prev).add(apt.id));
     toast({ title: 'Patient notified' });
   };
@@ -145,18 +115,9 @@ const DoctorAppointments = () => {
     toast({ title: 'Consultation completed' });
   };
 
-  const getProfileIdFromPatientProfile = async (patientProfileId: string): Promise<string | null> => {
-    const { data } = await supabase
-      .from('patient_profiles')
-      .select('profile_id')
-      .eq('id', patientProfileId)
-      .maybeSingle();
-    return data?.profile_id || null;
-  };
-
-  const pending = appointments.filter(a => a.status === 'pending_confirmation');
+  const pending = appointments.filter(a => a.status === 'pending');
   const confirmed = appointments.filter(a => a.status === 'confirmed');
-  const queue = appointments.filter(a => a.status === 'in_queue' || a.status === 'called');
+  const queue = appointments.filter(a => a.status === 'in_queue');
 
   if (loading) {
     return (
@@ -209,7 +170,7 @@ const DoctorAppointments = () => {
             <p className="text-sm text-muted-foreground text-center py-6">No patients in queue</p>
           ) : queue.map((apt, idx) => (
             <AppointmentCard key={apt.id} apt={apt} actionLoading={actionLoading} queuePosition={idx + 1}>
-              {calledIds.has(apt.id) || apt.status === 'called' ? (
+              {calledIds.has(apt.id) ? (
                 <>
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Phone className="h-3 w-3" /> {apt.patient_phone}
@@ -255,8 +216,8 @@ const AppointmentCard = ({
             {queuePosition ? `#${queuePosition} ` : ''}{apt.patient_name}
           </h3>
           <p className="text-xs text-muted-foreground">
-            📅 {apt.appointment_date} • 🕐 {apt.appointment_time}
-            {apt.fee_snapshot ? ` • ${apt.fee_snapshot} AFN` : ''}
+            📅 {apt.appointment_date}
+            {apt.fee_paid ? ` • ${apt.fee_paid} AFN` : ''}
           </p>
         </div>
         <Badge variant="secondary" className="text-[10px] capitalize">{apt.status.replace(/_/g, ' ')}</Badge>
