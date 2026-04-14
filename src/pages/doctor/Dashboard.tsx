@@ -16,7 +16,6 @@ const DoctorDashboard = () => {
   const { profile } = useAuth();
   const [availability, setAvailability] = useState<string>('offline');
   const [statusLoading, setStatusLoading] = useState(false);
-  const [doctorProfileId, setDoctorProfileId] = useState<string | null>(null);
   const [stats, setStats] = useState({
     todayTotal: 0,
     todayConfirmed: 0,
@@ -28,30 +27,29 @@ const DoctorDashboard = () => {
     if (!profile?.id) return;
 
     const init = async () => {
-      // Get doctor_profile record
-      const { data: dp } = await supabase
-        .from('doctor_profiles')
-        .select('id, availability_status')
-        .eq('profile_id', profile.id)
+      const { data: doc } = await supabase
+        .from('doctors')
+        .select('status')
+        .eq('id', profile.id)
         .maybeSingle();
 
-      if (dp) {
-        setDoctorProfileId(dp.id);
-        setAvailability(dp.availability_status);
-        await fetchStats(dp.id);
+      if (doc) {
+        setAvailability(doc.status);
       }
+      await fetchStats();
     };
     init();
   }, [profile?.id]);
 
-  const fetchStats = async (dpId: string) => {
+  const fetchStats = async () => {
+    if (!profile?.id) return;
     const today = new Date().toISOString().split('T')[0];
 
     const [todayAll, confirmed, queue, allTime] = await Promise.all([
-      supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('doctor_profile_id', dpId).eq('appointment_date', today).neq('status', 'cancelled'),
-      supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('doctor_profile_id', dpId).eq('appointment_date', today).eq('status', 'confirmed'),
-      supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('doctor_profile_id', dpId).eq('status', 'in_queue'),
-      supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('doctor_profile_id', dpId).neq('status', 'cancelled'),
+      supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('doctor_id', profile.id).eq('appointment_date', today).neq('status', 'cancelled'),
+      supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('doctor_id', profile.id).eq('appointment_date', today).eq('status', 'confirmed'),
+      supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('doctor_id', profile.id).eq('status', 'in_queue'),
+      supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('doctor_id', profile.id).neq('status', 'cancelled'),
     ]);
 
     setStats({
@@ -63,12 +61,12 @@ const DoctorDashboard = () => {
   };
 
   const updateStatus = async (newStatus: string) => {
-    if (!doctorProfileId) return;
+    if (!profile?.id) return;
     setStatusLoading(true);
     await supabase
-      .from('doctor_profiles')
-      .update({ availability_status: newStatus as any })
-      .eq('id', doctorProfileId);
+      .from('doctors')
+      .update({ status: newStatus })
+      .eq('id', profile.id);
     setAvailability(newStatus);
     setStatusLoading(false);
   };
@@ -82,7 +80,6 @@ const DoctorDashboard = () => {
         <p className="text-sm text-muted-foreground">Manage your appointments and patients</p>
       </div>
 
-      {/* Status Toggle */}
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -108,7 +105,6 @@ const DoctorDashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-3">
         <StatCard icon={Calendar} label="Today's Appointments" value={stats.todayTotal.toString()} color="text-primary" />
         <StatCard icon={CheckCircle} label="Confirmed Today" value={stats.todayConfirmed.toString()} color="text-success" />

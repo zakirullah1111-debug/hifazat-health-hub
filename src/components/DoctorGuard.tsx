@@ -3,25 +3,22 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Clock } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Database } from '@/integrations/supabase/types';
-
-type VerificationStatus = Database['public']['Enums']['verification_status'];
 
 const DoctorGuard = ({ children }: { children: React.ReactNode }) => {
   const { profile } = useAuth();
-  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus | null>(null);
+  const [doctorData, setDoctorData] = useState<{ is_approved: boolean; is_frozen: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!profile?.id) return;
 
     supabase
-      .from('doctor_profiles')
-      .select('verification_status')
-      .eq('profile_id', profile.id)
+      .from('doctors')
+      .select('is_approved, is_frozen')
+      .eq('id', profile.id)
       .maybeSingle()
       .then(({ data }) => {
-        setVerificationStatus(data?.verification_status ?? null);
+        setDoctorData(data);
         setLoading(false);
       });
   }, [profile?.id]);
@@ -34,7 +31,7 @@ const DoctorGuard = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  if (verificationStatus === 'frozen') {
+  if (doctorData?.is_frozen) {
     return (
       <DoctorStatusScreen
         title="Account Frozen"
@@ -44,17 +41,7 @@ const DoctorGuard = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  if (verificationStatus === 'rejected') {
-    return (
-      <DoctorStatusScreen
-        title="Verification Rejected"
-        message="Your verification was not approved. Please contact support."
-        color="text-destructive"
-      />
-    );
-  }
-
-  if (verificationStatus !== 'approved') {
+  if (!doctorData?.is_approved) {
     return (
       <DoctorStatusScreen
         title="Verification Pending"

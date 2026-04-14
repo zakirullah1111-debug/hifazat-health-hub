@@ -14,6 +14,7 @@ const PatientSignup = () => {
   const [password, setPassword] = useState('');
   const [village, setVillage] = useState('');
   const [district, setDistrict] = useState('');
+  const [city, setCity] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -35,27 +36,19 @@ const PatientSignup = () => {
       if (error) throw error;
 
       if (data.user) {
-        // Wait for handle_new_user trigger to create profile
         await new Promise((r) => setTimeout(r, 1500));
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', data.user.id)
-          .maybeSingle();
+        const { error: patientError } = await supabase
+          .from('patients')
+          .insert({
+            id: data.user.id,
+            village,
+            district,
+            city,
+          });
 
-        if (profile) {
-          const { error: patientError } = await supabase
-            .from('patient_profiles')
-            .insert({
-              profile_id: profile.id,
-              village,
-              district,
-            });
-
-          if (patientError) {
-            console.error('Patient insert error:', patientError);
-          }
+        if (patientError) {
+          console.error('Patient insert error:', patientError);
         }
       }
 
@@ -98,6 +91,10 @@ const PatientSignup = () => {
           <div className="space-y-2">
             <Label htmlFor="district">District</Label>
             <Input id="district" value={district} onChange={(e) => setDistrict(e.target.value)} required placeholder="Your district" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="city">City</Label>
+            <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} required placeholder="Your city" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>

@@ -48,28 +48,23 @@ const DoctorSignup = () => {
       if (data.user) {
         await new Promise((r) => setTimeout(r, 1500));
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', data.user.id)
-          .maybeSingle();
+        const { error: doctorError } = await supabase
+          .from('doctors')
+          .insert({
+            id: data.user.id,
+            specialization,
+            city,
+            district,
+            experience_years: parseInt(experienceYears) || 0,
+            fee: parseFloat(consultationFee) || 0,
+            bio: bio || null,
+            is_approved: false,
+            is_frozen: false,
+            status: 'offline',
+          });
 
-        if (profile) {
-          const { error: doctorError } = await supabase
-            .from('doctor_profiles')
-            .insert({
-              profile_id: profile.id,
-              specialization,
-              city,
-              district,
-              years_of_experience: parseInt(experienceYears) || 0,
-              consultation_fee: parseFloat(consultationFee) || 0,
-              bio: bio || null,
-            });
-
-          if (doctorError) {
-            console.error('Doctor insert error:', doctorError);
-          }
+        if (doctorError) {
+          console.error('Doctor insert error:', doctorError);
         }
       }
 

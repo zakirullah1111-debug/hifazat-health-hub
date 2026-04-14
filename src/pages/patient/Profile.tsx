@@ -24,23 +24,11 @@ const PatientProfile = () => {
     setSubmitting(true);
 
     try {
-      // Get patient_profile id
-      const { data: pp } = await supabase
-        .from('patient_profiles')
-        .select('id')
-        .eq('profile_id', profile.id)
-        .maybeSingle();
-
-      if (!pp) {
-        toast({ title: 'Error', description: 'Patient profile not found.', variant: 'destructive' });
-        setSubmitting(false);
-        return;
-      }
-
       const { error } = await supabase.from('complaints').insert({
-        patient_profile_id: pp.id,
+        patient_id: profile.id,
         subject: complaintSubject,
         message: complaintMessage,
+        status: 'open',
       });
 
       if (error) throw error;

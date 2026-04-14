@@ -1,9 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { Database } from '@/integrations/supabase/types';
 
-type AppRole = Database['public']['Enums']['app_role'];
+type AppRole = 'patient' | 'doctor' | 'admin';
 
 interface AuthContextType {
   user: User | null;
@@ -40,7 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, role, full_name, email, phone')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .maybeSingle();
       if (data && !error) {
         setProfile(data);
@@ -54,7 +53,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    // Safety timeout — never stay loading forever
     const safetyTimeout = setTimeout(() => {
       setLoading(false);
     }, 5000);

@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Database } from '@/integrations/supabase/types';
 import { Loader2 } from 'lucide-react';
 
-type AppRole = Database['public']['Enums']['app_role'];
+type AppRole = 'patient' | 'doctor' | 'admin';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
